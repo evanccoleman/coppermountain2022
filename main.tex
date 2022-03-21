@@ -47,175 +47,108 @@
 	\tableofcontents
 \end{frame}
 
-\section{Introduction}
+\section{Motivation}
 
 \begin{frame}
 	\frametitle{Introduction}
 	\begin{itemize}
 		\item Problem: solve the linear system $Ax = b$
-			\begin{itemize}
-				\item $A$ is a matrix representing the system being described
-				\item $x^{(k)} \in \mathbb{R}^n$ is the solution vector that will be found iteratively
-				\item $b \in \mathbb{R}^n$ is some (possibly non-zero) right-hand side
-			\end{itemize}
-		\item Systems of linear algebraic equations arise everywhere
-			\begin{itemize}
-				\item Often from discretizations of partial differential equations
-				\item The size of the problem can vary from $10^2 - 10^{10}$ unknowns
-			\end{itemize}
-		\item Solution of linear systems takes up a large portion of the available compute time on High Performance Computing (HPC) resources
-		\item Creation of new and improved techniques offers chances for higher throughput and/or higher fidelity
+		\item Some systems don't need to be solved exactly
+		    \begin{itemize}
+		        \item e.g., there may be applications where quickly arriving at a sufficiently good answer is preferable to getting an exact answer in a longer period of time
+		    \end{itemize}
+	    \item There are a number of papers that explore the feasibility of using randomized linear solvers to achieve this goal:
+	        \begin{itemize}
+	            \item \textcite{leventhal2010randomized}
+	            \item \textcite{griebel2012greedy}
+	            \item \textcite{avron2015revisiting}
+	        \end{itemize}
 	\end{itemize}	
 \end{frame}
 
 \begin{frame}
-	\frametitle{Big picture (2/3)}
+	\frametitle{Motivation}
 	\begin{itemize}
-		\item For sufficiently large problems, direct solution methods are no longer viable and iterative methods are used
-			\begin{itemize}
-				\item Popular state-of-the art techniques include Krylov subspace solvers and multigrid methods 
-			\end{itemize}
-		\item The methods being discussed here are part of a class of iterative methods known as stationary linear solvers
-			\begin{itemize}
-				\item Examples include Jacobi and Gauss-Seidel
-			\end{itemize}
-		\item The more novel features involve expanding on techniques for parallelism via:
-			\begin{itemize}
-				\item asynchronous operation between processors
-				\item randomized work selection
-			\end{itemize} 
+		\item \textcite{wolfson2017distributed} investigated using a Southwell-like approach towards solving linear systems
 	\end{itemize}	
+	\begin{block}{Question:}
+	    Is there someway to combine the natural greediness of the Southwell algorithm with the randomized asynchronous nature of the solvers on the previous slide?
+	\end{block}
 \end{frame}
 
-\begin{frame}
-	\frametitle{Big picture (3/3)}
-	\begin{itemize}
-		\item If $A$ is sufficiently ``nice'' (i.e. $\rho(A) < 1$), these new methods can be used by themselves
-			\begin{itemize}
-				\item Advantages:
-					\begin{itemize}
-						\item They scale well
-						\item They solve provide a quick initial reduction in residual error
-					\end{itemize}
-			\end{itemize} 
-		\item If $A$ is less nice, these new methods would be better to be used in conjunction with existing techniques
-			\begin{itemize}
-				\item As preconditioners for Krylov subspace methods
-				\item As smoothers for multigrid methods
-			\end{itemize}
-	\end{itemize}	
-\end{frame}
 
-\section{Traditional Stationary Solvers}
+\section{Ideas for Improvement}
 
 \begin{frame}
-	\frametitle{Solving the system}
+	\frametitle{Setting the stage}
 	\begin{itemize}
-		\item Assume $A$ is invertible (so the system has a unique solution)
-		\item Write the $i^{th}$ equation of the system $Ax = b$ out:
-			\begin{equation}
-				\sum_{j=1}^n a_{ij}x_j = b_i
-			\end{equation}
-		\item Further assume that $a_{ii} \neq 0$, then each component can be written
-			\begin{equation}
-				x_i = \frac{-1}{a_{ii}}\left( \sum_{j\neq i} a_{ij}x_j - b_i \right)
-			\end{equation}
-		\item Performing iteration on this is known as the Jacobi algorithm
-	\end{itemize}	
-\end{frame}
-
-\begin{frame}
-	\frametitle{Jacobi algorithm}
-	\begin{algorithm}[H]
-		\DontPrintSemicolon
-		\KwIn{$a_{ij} \in A$, initial guess $x^{(0)}$, RHS $b$}
-		\For {$k = 1, 2, \ldots$ until convergence} {
-			\For {$i = 1, 2, \ldots, n$} {
-				$x_i^{(k)} = \frac{-1}{a_{ii}}\left( \sum_{j\neq i} a_{ij}x_j^{(k-1)} - b_i \right)$\;
-			}
-		}
-	\end{algorithm}
-	\begin{itemize}
-		\item Convergence is guaranteed when $A$ is diagonally dominant
-		\item Known as an additive method since all component updates use the prior values of $x$
-			\begin{itemize}
-				\item In contrast to multiplicative methods such as Gauss-Seidel that use the latest information available
-			\end{itemize}
-		%\item Expressing in block form: $x^{(k)} = $
+		\item These solvers have applications inside of other solvers, but we're going to focus on their ability to solve systems directly
+		\item In the next section, we'll discuss some blocking strategies and show some results for different ideas, but this section will be focused more on examining individual elements (rather than blocks of elements)
 	\end{itemize}
 \end{frame}
 
 \begin{frame}
-	\frametitle{Gauss-Seidel algorithm}
-	\begin{algorithm}[H]
-		\DontPrintSemicolon
-		\KwIn{$a_{ij} \in A$, initial guess $x^{(0)}$, RHS $b$}
-		\For {$k = 1, 2, \ldots$ until convergence} {
-			\For {$i = 1, 2, \ldots, n$} {
-				$x_i^{(k)} = \frac{-1}{a_{ii}}\left( \sum_{j < i} a_{ij}x_j^{(k)} + \sum_{j > i} a_{ij}x_j^{(k-1)} - b_i \right)$\;
-			}
-		}
-	\end{algorithm}
+	\frametitle{``New'' approach}
 	\begin{itemize}
-		\item Convergence tends to be better than Jacobi, but parallelism is limited
-		\item For both algorithms, convergence can be judged by progression of the residual,
+		\item Make the random selection change dynamically 
+		\item Goal is to gain some benefit of selecting the ``right'' blocks (similar to classical Southwell) without adding so much computational overhead that the total execution time is slower
+		\item Based around monitoring which blocks contribute most to the residual $r = b - Ax$
+		\item Periodically find and rank the local/component residuals (for the contribution of block $i$):
 			\begin{equation}
-				r^{(k)} = b - Ax^{(k)}
+				r_i = b_i - Ax_i
 			\end{equation}
-			  which will decrease to 0 as iteration proceeds
+			and make the selection using a non-uniform distribution that favors selection of components with higher local residual
 	\end{itemize}
 \end{frame}
 
 \begin{frame}
-	\frametitle{Southwell algorithm}
-	\begin{algorithm}[H]
-		\DontPrintSemicolon
-		\KwIn{$a_{ij} \in A$, initial guess $x^{(0)}$, RHS $b$}
-		\For {$k = 1, 2, \ldots$ until convergence} {
-			Evaluate $r^{(k)} = b - Ax^{(k)}$ \;
-			Choose $i$ such that $r_i^{(k)} = b_i - Ax^{(k)}_i$ is maximized \;
-			$x_i^{(k)} = \frac{-1}{a_{ii}}\left( \sum_{j\neq i} a_{ij}x_j^{(k-1)} - b_i \right)$\;
-		}
-	\end{algorithm}
+	\frametitle{Approaches towards making the component selection}
 	\begin{itemize}
-		\item Convergence tends to be better still
-		\item There is an added cost associated with calculating the residual so regularly (which may be done anyway to detect convergence/termination), and the algorithm is only worth using if the decrease in total number of iterations outweighs the increased cost per iteration
+		\item Previous approaches:
+		    \begin{itemize}
+		        \item Uniform distribution
+		        \item Discrete (non-updated) distribution defined by the ratio of the diagonal element to the trace
+		            \begin{equation}
+		                \mathbb{P}(i=k) = \frac{a_{kk}}{tr(A)}
+		            \end{equation}
+		        \item ``Greedy'' selection\footcite{griebel2012greedy} picks an element within a parameter defined threshold of optimal in the Southwell sense 
+		    \end{itemize}
 	\end{itemize}
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{Why do we care?}
+	\frametitle{Approaches towards making the component selection}
 	\begin{itemize}
-		\item Classical methods are very rarely used by themselves
-			\begin{itemize}
-				\item Often used as preconditioners to more complex methods (e.g. Krylov subspace methods), or as smoothers in multigrid methods
-			\end{itemize}
-		\item Jacobi is an ``embarrassingly parallel'' problem, where parallelism can be exploited pretty fully
-		\item The ideas translate directly to other similar solvers 
-			\begin{itemize}
-				\item i.e. many popular approaches in convex optimization
-			\end{itemize}
-	\end{itemize}	
+		\item Possible new approaches:
+		    \begin{itemize}
+		        \item Discrete distribution defined by the ratio of the local residual to the sum of all residuals
+		            \begin{equation}
+		                \mathbb{P}(i=k) = \frac{r_{k}}{\sum_j r_j}
+		            \end{equation}
+		        \item Periodically fitting a continuous distribution to the (sorted) local residuals and drawing random numbers from this distribution
+		    \end{itemize}
+	\end{itemize}
 \end{frame}
 
 
-\section{Parallel Algorithms}
-
 \begin{frame}
-	\frametitle{Overview}
+	\frametitle{Questions to investigate}
 	\begin{itemize}
-		\item Most problems of interest in scientific computing are very large scale in nature
-		\item The number of unknowns tends to be several orders of magnitude higher than the number of processors
-		\item Many different approaches to parallelism have been attempted
-		\item Goals for an approach:
-			\begin{itemize}
-				\item Efficient (works quickly)
-				\item Robust (works on a variety of problems)
-				\item Scalable (works on a variety of architectures)
-				\item Provable convergence and convergence rate (have meaningful bounds on how long things will take)
-			\end{itemize}
-	\end{itemize}	
+		\item Can the potential benefit from this greedier selection really outweigh the extra computational overhead of generating a more optimal selection?
+		\item Does this extend naturally to block variants?
+		\item This style of approach introduces a reasonably large set of parameters that may be up to the user to tune appropriately to the problem at hand- is there someway to optimize the parameter selection based on intrinsic properties of the matrix?
+		    \begin{itemize}
+		        \item e.g., how dynamically the distributions are updated, when to use a continuous vs discrete distribution
+		    \end{itemize}
+	    \item How do we communicate solver wide information about the dynamic distribution without breaking the asynchronous nature of the solver?
+	        \begin{itemize}
+	            \item Is this different in shared vs distributed memory?
+	        \end{itemize}
+	\end{itemize}
 \end{frame}
+
+\section{Numerical Results}
 
 \begin{frame}
 	\frametitle{Approach: block methods}
@@ -314,189 +247,6 @@
 	\end{itemize}
 \end{frame}
 
-% Synchronous
-\begin{frame}[shrink]
-	\frametitle{Synchronous Fixed Point Iteration}
-	\begin{itemize}
-		\item The fixed point iteration $x = G(x)$ can be broken into the individual component functions $g_i(x)$ that update each element $x_i$ of $x$ where $x = G(x) = (g_1(x), g_2(x), \cdots, g_n(x))$:
-		\begin{align*}
-		x_1^{(k+1)} &= g_1(x_1^{(k)}, x_2^{(k)}, x_3^{(k)}, \cdots, x_n^{(k)}) \\
-		x_2^{(k+1)} &= g_2(x_1^{(k)}, x_2^{(k)}, x_3^{(k)}, \cdots, x_n^{(k)}) \\
-		x_3^{(k+1)} &= g_3(x_1^{(k)}, x_2^{(k)}, x_3^{(k)}, \cdots, x_n^{(k)}) \\
-		&\vdots							   \\
-		x_n^{(k+1)} &= g_n(x_1^{(k)}, x_2^{(k)}, x_3^{(k)}, \cdots, x_n^{(k)}) 		
-		\end{align*}
-		\item In the synchronous case, all updates $g_i(x)$ use {\em the same} values for all components of the vector $x$
-		\item Results will be reproducible since the same updates will occur in the same order every time
-	\end{itemize}
-\end{frame}
-
-% Asynchronous
-\begin{frame}[shrink]
-	\frametitle{Asynchronous Fixed Point Iteration}
-	\begin{itemize}
-		\item Let $s_l(k)$ indicate the number of times that the $l^{th}$ component has been updated after the $k^{th}$ update
-		\item Let $I^{(k)}$ be a set of indices that specifies which components to update at the $k^{th}$ update
-		\item Then under standard fairly mild assumptions, the $(k+1)^{st}$ update to the $i^{th}$ component, $x_i$, can be written
-		{\small
-			\begin{equation}
-			x_i^{(k+1)} = \begin{cases} 
-			x_i^{(k)} \hspace{1.55in} \text{ if } i \notin I^{(k+1)} \\
-			g_i(x_1^{(s_1(k))}, x_2^{(s_2(k))}, \cdots, x_n^{(s_n(k))}) \text{ if } i \in I^{(k+1)}
-			\end{cases}
-			\end{equation}
-		}
-		\item In the asynchronous case, the updates $g_i(x)$ use {\em different} values for $x_i \in x$ 
-		\begin{itemize}
-			\item i.e. each update will use the latest values available to it
-		\end{itemize}
-		\item Update order is non-deterministic and is related to the parallel performance of the hardware
-	\end{itemize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Synchronous Update}
-	\begin{figure}
-		\begin{tikzpicture}[scale=1.9]
-		% setup the nodes as small black circles
-		\foreach \x in {0,...,3} {
-			\foreach \y in {0,...,3} {
-				\node[shape=circle,fill=black,scale=0.3] (\x-\y) at (\x,\y){}; 
-				%labeling as \x-\y allows referencing inside of a foreach loop later
-			}
-		}
-		
-		% circle interior nodes with letters
-		\foreach \mynode/\mytext in {1-2/$u_1^{(5)}$,2-2/$u_2^{(4)}$,1-1/$u_3^{(4)}$,2-1/$u_4$} {
-			\draw[fill=white] (\mynode) circle (0.4cm) node {\mytext};
-		}	
-		
-		% 
-		\draw[thick] (0.5,0.5) to (2.5,0.5); 
-		\draw[thick] (0.5,0.5) to (0.5,2.5); 
-		\draw[thick] (0.5,2.5) to (2.5,2.5); 
-		\draw[thick] (2.5,2.5) to (2.5,0.5); 
-		
-		% label boundary nodes
-		\foreach \mynode/\mytext in {0-3/$b_1$,1-3/$b_2$,2-3/$b_3$,3-3/$b_4$,
-			0-2/$b_5$,0-1/$b_7$,3-1/$b_8$,3-2/$b_6$,
-			0-0/$b_9$,1-0/$b_{10}$,2-0/$b_{11}$,3-0/$b_{12}$} {
-			\draw[fill=blue,text=white] (\mynode) circle (0.25cm) node {{\scriptsize \mytext}};
-		}	
-		
-		% drawing lines to show the nodes needed to update $u_1$
-		\draw[->,thick] (0.2,2) to (0.7,2); 
-		\draw[->,thick] (1,2.8) to (1,2.2); 
-		\draw[->,thick] (1,1.25) to (1,1.8); 
-		\draw[->,thick] (1.7,2) to (1.3,2); 
-		\end{tikzpicture}
-	\end{figure}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Asynchronous Update}
-	\begin{figure}
-		\begin{tikzpicture}[scale=1.9]
-		% setup the nodes as small black circles
-		\foreach \x in {0,...,3} {
-			\foreach \y in {0,...,3} {
-				\node[shape=circle,fill=black,scale=0.3] (\x-\y) at (\x,\y){}; 
-				%labeling as \x-\y allows referencing inside of a foreach loop later
-			}
-		}
-		
-		% circle interior nodes with letters
-		\foreach \mynode/\mytext in {1-2/$u_1^{(5)}$,2-2/$u_2^{(3)}$,1-1/$u_3^{(2)}$,2-1/$u_4$} {
-			\draw[fill=white] (\mynode) circle (0.4cm) node {\mytext};
-		}		
-		
-		% drawing interior/boundary box
-		\draw[thick] (0.5,0.5) to (2.5,0.5); 
-		\draw[thick] (0.5,0.5) to (0.5,2.5); 
-		\draw[thick] (0.5,2.5) to (2.5,2.5); 
-		\draw[thick] (2.5,2.5) to (2.5,0.5); 
-		
-		% label boundary nodes
-		\foreach \mynode/\mytext in {0-3/$b_1$,1-3/$b_2$,2-3/$b_3$,3-3/$b_4$,
-			0-2/$b_5$,0-1/$b_7$,3-1/$b_8$,3-2/$b_6$,
-			0-0/$b_9$,1-0/$b_{10}$,2-0/$b_{11}$,3-0/$b_{12}$} {
-			\draw[fill=blue,text=white] (\mynode) circle (0.25cm) node {{\scriptsize \mytext}};
-		}	
-		
-		% drawing lines to show the nodes needed to update $u_1$
-		\draw[->,thick] (0.2,2) to (0.7,2); 
-		\draw[->,thick] (1,2.8) to (1,2.2); 
-		\draw[->,thick] (1,1.25) to (1,1.8); 
-		\draw[->,thick] (1.7,2) to (1.3,2); 
-		\end{tikzpicture}
-	\end{figure}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Classical approaches to parallelism}
-	\begin{itemize}
-		\item Synchronous Block Solvers:
-			\begin{itemize}
-				\item Each processor picks a block to update and uses the information from the prior iteration
-					\begin{itemize}
-						\item Think: 100 processors, 1000 blocks- processor 1 will update block 1, 101, 201, $\ldots$
-					\end{itemize}
-				\item Creates a synchronization point at the end of each iteration
-			\end{itemize}
-		\item Asynchronous Block Solvers:
-			\begin{itemize}
-				\item Each processor picks a block to update and uses the latest information available
-					\begin{itemize}
-						\item Data probably comes from a mix of iterations
-					\end{itemize}
-				\item No synchronization points, but less coordination
-					\begin{itemize}
-						\item Update ``levels'' can get out-of-sync; may need to assume a bound on how much
-					\end{itemize}
-				\item Convergence results tend to be asymptotic
-			\end{itemize}
-	\end{itemize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Modern approaches to parallelism}
-	\begin{itemize}
-		\item Randomized Block Solvers:
-			\begin{itemize}
-				\item Each processor picks a block uniformly at random
-				\item Can be synchronous or asynchronous
-				\item Performance similar to asynchronous block solvers
-			\end{itemize}
-		\item Weighted Randomized Block Solvers:
-			\begin{itemize}
-				\item The probability distribution is weighted {\em before} calculation starts
-					\begin{itemize}
-						\item Ex: blocks with larger norm are favored, blocks with more non-zeros are favored
-					\end{itemize}
-			\end{itemize}
-		\item Distributed Southwell:
-			\begin{itemize}
-				\item Non-randomized, asynchronous approach
-				\item Each processor is assigned to a block and (independently) updates the equation with highest contribution to the residual of any coupled variable
-			\end{itemize}
-	\end{itemize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{``New'' approach}
-	\begin{itemize}
-		\item Make the random selection change dynamically 
-		\item Goal is to gain some benefit of selecting the ``right'' blocks (similar to classical Southwell) without adding so much computational overhead that the total execution time is slower
-		\item Based around monitoring which blocks contribute most to the residual $r = b - Ax$
-		\item Periodically find and rank the component residuals (for the contribution of block $i$):
-			\begin{equation}
-				r_i = b_i - Ax_i
-			\end{equation}
-			and make the selection using a non-uniform distribution
-	\end{itemize}
-\end{frame}
-
-
 \begin{frame}
 	\frametitle{Residual data for finite-difference of 2D Laplacian}
 	\begin{figure}[H]
@@ -533,32 +283,12 @@
 \begin{frame}
 	\frametitle{Moving forward I}
 	\begin{itemize}
-		\item Viewing the iteration as a fixed point algorithm allows the use of successive differences:
-				\begin{align}
-					\delta^{(k+1)} &= \Vert x^{(k+1)} - x^{(k)} \Vert \\
-					\delta^{(k+1)}_i &= \Vert x^{(k+1)}_i - x^{(k)}_i \Vert 
-				\end{align}
-			since termination occurs when $x^{(k+1)} \approx G \left( x^{(k)} \right)$, or when
-				\begin{equation}
-					\Vert x^{(k+1)} - x^{(k)} \Vert < \epsilon.
-				\end{equation}
-		\item Much less computationally expensive and exhibit similar behavior and trends
-			\begin{itemize}
-				\item Theory is significantly less developed
-			\end{itemize}
-	\end{itemize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Moving forward II}
-	\begin{itemize}
 		\item Proving convergence as a per iteration reduction in the expected error
 		\begin{itemize}
 			\item Existing work proves relations such as (for synchronous, uniformly randomized, block Gauss-Seidel):
 			\begin{equation}
 			\mathbb{E}[\Vert x^{(k)} - x^* \Vert ] \leq \left( 1 - \frac{\beta (2 - \beta) \lambda_{min}}{n}\right)^k \Vert x^{(0)} - x^* \Vert^2_A
 			\end{equation}
-			\item General idea of proof: choose a (weighted) probability distribution so that the new distance from the solution is the old distance times some known quality (such as a residual)
 		\end{itemize}
 		\item Dealing with the distributed memory environment
 			\begin{itemize}
@@ -570,7 +300,7 @@
 \end{frame}
  
 \begin{frame}
-	\frametitle{Moving forward III}
+	\frametitle{Moving forward II}
 	\begin{itemize}
 		\item Experimenting with different distributions (still chosen beforehand) and ranking methods and periodicities
 		\item Dynamically fitting the residual or difference data with an evolving probability distribution
@@ -665,10 +395,10 @@
 %	\end{algorithm}
 %\end{frame}
 
-\section{Related areas}
+\section{Summary \& Path Forward}
 
 \begin{frame}
-	\frametitle{Related areas}
+	\frametitle{Summary \& Path Forward}
 	\begin{itemize}
 		\item While linear solvers are prevalent throughout science and engineering, the idea of using weighted randomization could find uses in other key areas
 		\item Example: convex optimization 

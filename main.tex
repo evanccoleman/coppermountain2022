@@ -151,11 +151,66 @@
 \section{Numerical Results}
 
 \begin{frame}
+	\frametitle{More motivation}
+	\begin{itemize}
+		\item One of the first questions should be: how different are the local contributions to the residual?
+		\item For matrices where the local residuals, $r_i$, are similar, any Southwell-like weighting will not show much improvement over a uniform random distribution
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Residual data for finite-difference of 2D Laplacian}
+	\begin{figure}[H]
+		\centering
+		\subfloat[Unsorted residuals]{\includegraphics[width=0.50\textwidth]{images/init_resids_10x10.pdf}}
+		\subfloat[Sorted residuals]{\includegraphics[width=0.50\textwidth]{images/init_resids_10x10_sorted.pdf}}
+		\caption{Initial component residuals ($r_i / \max (r_i)$).}
+		\label{fig:initial-residuals-laplacian}
+	\end{figure}
+\end{frame}
+
+% TODO: Add a triangular distribution?
+% TODO: Show the distribution at several iteration counts?
+% TODO: Find a way to show the comparison with which components would be selected discrete local residual distribution vs discrete diagonal element distribution
+\begin{frame}
+	\frametitle{Ranked residual data for finite-difference of 2D Laplacian}
+	\begin{figure}[H]
+		\centering
+		\subfloat[Sorted Residuals, exponential distributions]{\includegraphics[width=0.75\textwidth]{images/exp_dist_overlay_init.pdf}}
+	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Solver data (Laplacian)}
+	\begin{figure}[H]
+		\centering
+		\subfloat[2D problem (5-pt stencil, $10\times 10$ grid)]{\includegraphics[width=0.45\textwidth]{images/res_10x10.pdf}}
+		\subfloat[3D problem (27-pt stencil, $10 \times 10 \times 10$ grid)]{\includegraphics[width=0.45\textwidth]{images/res_3D_10x10x10.pdf}}
+		\caption{Residual ($r / r_0$) progression for the first 10,000 iterations of four stationary methods solving the 2D (a) and 3D (b) Laplacian.}
+	\end{figure}
+\end{frame}
+
+% TODO: Find data (MATLAB or other) showing residual progression of solver methods on another problem
+\begin{frame}
+	\frametitle{Solver data (???)}
+	\begin{itemize}
+	    \item TODO 1
+	\end{itemize}
+\end{frame}
+
+% TODO: Find data  showing residual progression of solver methods at scale
+\begin{frame}
+	\frametitle{Solver data (???)}
+	\begin{itemize}
+	    \item TODO 2
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
 	\frametitle{Approach: block methods}
 	\begin{itemize}
+	    \item One of the next logical steps would be to look into the extension of these ideas to block methods
 		\item Divide the domain into $m$ subdomains, $\mathbb{R}^n = \mathbb{R}^{n_1} \times \mathbb{R}^{n_2} \times \cdots \mathbb{R}^{n_m}$, where $n = \sum_i n_i$
-		\item They don't need to be disjoint (and convergence can actually be better when they're not), but conceptually it's easier to visualize them this way
-		\item Focus is on how this process can be accelerated by changing the parallel nature of the algorithm
 		\item Each time a block is selected it performs one or more internal iterations of a stationary solver
 	\end{itemize}
 \end{frame}
@@ -231,191 +286,48 @@
 	\end{itemize}
 \end{frame}
 
-
+% TODO: Find data  showing residual progression of block solver methods
 \begin{frame}
-	\frametitle{Fixed Point Methods}
+	\frametitle{Solver data (???)}
 	\begin{itemize}
-		\item The solvers focused on here can all be expressed as fixed point iterations of the form
-			\begin{equation}
-				x = G(x)
-			\end{equation}
-		\item In terms of parallelism for these methods:
-		\begin{itemize}
-			\item Each component (or block of components) can be treated as a task and assigned to a single processor
-			\item Each processor {\em should} be able to complete its current task without receiving new information from other processors 
-		\end{itemize}
+	    \item TODO 2
 	\end{itemize}
 \end{frame}
 
-\begin{frame}
-	\frametitle{Residual data for finite-difference of 2D Laplacian}
-	\begin{figure}[H]
-		\centering
-		\subfloat[Unsorted residuals]{\includegraphics[width=0.45\textwidth]{images/init_resids_10x10.pdf}}
-		\subfloat[Sorted residuals]{\includegraphics[width=0.45\textwidth]{images/init_resids_10x10_sorted.pdf}}
-		\caption{Initial component residuals ($r_i / \max (r_i)$).}
-		\label{fig:initial-residuals-laplacian}
-	\end{figure}
-\end{frame}
 
-\begin{frame}
-	\frametitle{Ranked residual data for finite-difference of 2D Laplacian}
-	\begin{figure}[H]
-		\centering
-		\subfloat[Sorted Residuals, exponential distributions]{\includegraphics[width=0.45\textwidth]{images/exp_dist_overlay_10iter.pdf}}
-		\subfloat[Sorted Residuals, triangular distributions]{\includegraphics[width=0.45\textwidth]{images/normal_dist_overlay_10iter.pdf}}
-	\end{figure}
-	\begin{itemize}
-		\item Need to balance computational cost associated with generating a ranked list and fitting a distribution with the benefit in doing so
-	\end{itemize}
-\end{frame}
 
-\begin{frame}
-	\frametitle{Solver data (Laplacian)}
-	\begin{figure}[H]
-		\centering
-		\subfloat[2D problem (5-pt stencil, $10\times 10$ grid)]{\includegraphics[width=0.45\textwidth]{images/res_10x10.pdf}}
-		\subfloat[3D problem (27-pt stencil, $10 \times 10 \times 10$ grid)]{\includegraphics[width=0.45\textwidth]{images/res_3D_10x10x10.pdf}}
-		\caption{Residual ($r / r_0$) progression for the first 10,000 iterations of four stationary methods solving the 2D (a) and 3D (b) Laplacian.}
-	\end{figure}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Moving forward I}
-	\begin{itemize}
-		\item Proving convergence as a per iteration reduction in the expected error
-		\begin{itemize}
-			\item Existing work proves relations such as (for synchronous, uniformly randomized, block Gauss-Seidel):
-			\begin{equation}
-			\mathbb{E}[\Vert x^{(k)} - x^* \Vert ] \leq \left( 1 - \frac{\beta (2 - \beta) \lambda_{min}}{n}\right)^k \Vert x^{(0)} - x^* \Vert^2_A
-			\end{equation}
-		\end{itemize}
-		\item Dealing with the distributed memory environment
-			\begin{itemize}
-				\item Most approaches to this problem analyze and experiment with shared memory environments (e.g. a single workstation/GPU)
-				\item Extending to the distributed environment is non-trivial
-			\end{itemize}
-		\item Incorporating new solvers into more complex existing routines
-	\end{itemize}
-\end{frame}
- 
-\begin{frame}
-	\frametitle{Moving forward II}
-	\begin{itemize}
-		\item Experimenting with different distributions (still chosen beforehand) and ranking methods and periodicities
-		\item Dynamically fitting the residual or difference data with an evolving probability distribution
-		\item Investigating the impact that different problems have
-			\begin{itemize}
-				\item If all blocks have equal contribution to the residual, using a non-uniform distribution has no benefit
-				\item Are there problems that some approaches can handle that others can't?
-			\end{itemize}
-		\item Look into the performance inside of more complicated ``real world'' applications
-			\begin{itemize}
-				\item Do these small differences even matter?
-			\end{itemize}
-	\end{itemize}
-\end{frame}
-
-%\section{A (slightly more) formal approach}
-%
-%\begin{frame}
-%	\frametitle{Notation (following Griebel and Oswald, 2012)}
-%	\begin{itemize}
-%		\item Let:
-%			\begin{itemize}
-%				\item $V$ be a separable Hilbert space
-%				\item $a(\cdot, \cdot)$ be a continuous symmetric positive definite bilinear form on $V$
-%				\item $F$ be a bounded linear functional on $V$
-%				\item $V_a$ represent the Hilbert space with scalar product given by the bilinear form $a(\cdot, \cdot)$ 
-%			\end{itemize}
-%		\item The problem becomes a variational problem, (iteratively) find $u \in V$ such that
-%			\begin{equation}
-%				a(u,v) = F(v) 
-%			\end{equation}
-%			 for all $v \in V$
-%	\end{itemize}
-%\end{frame}
-%
-%\begin{frame}
-%	\frametitle{Notation (continued)}
-%	\begin{itemize}
-%		\item The iteration from before becomes an iterative subspace correction scheme
-%		\item Let $V_a$ be represented by a finite collection of Hilbert spaces, $V_{a_i}$, along with inner products $a_i(\cdot, \cdot)$, and bounded linear operators, $R_i: V_{a_i} \rightarrow V_a$ as follows:
-%			\begin{equation}
-%				V_a = \sum_{i=1}^N R_i V_{a_i} = \lbrace v = \sum_{i=1}^N R_i v_i : v_i \in V_{a_i}, i = 1, \ldots, N \rbrace
-%			\end{equation}
-%		\item As before, the subspaces don't have to be disjoint but they can be thought of that way
-%	\end{itemize}
-%\end{frame}
-%
-%\begin{frame}
-%	\frametitle{...and further}
-%	\begin{itemize}
-%		\item There are upper bounds on the $R_i$ operators
-%			\begin{equation}
-%				a(R_i v_i, R_i v_i) \leq \gamma_i a_i (v_i, v_i)
-%			\end{equation}
-%		\item Define operators $T_i: V_a \rightarrow V_{a_i}$
-%			\begin{equation}
-%				a_i(T_i v, v_i) = a(v, R_i v_i)
-%			\end{equation}
-%		\item Define the error at each iteration (in order to compute a residual) as
-%			\begin{equation}
-%				e^{(k)} = u - u^{(k)}
-%			\end{equation}
-%			which can be solved since the variational problem at each iteration can be solved without knowledge of $u$
-%	\end{itemize}
-%\end{frame}
-%
-%\begin{frame}
-%	\frametitle{Bringing it back}
-%	\begin{itemize}
-%		\item In terms of the block methods discussed earlier for solving $Ax = b$, where $A$ is SPD:
-%			\begin{itemize}
-%				\item $V = \mathbb{R}^n$
-%				\item The space splitting is based on the coordinate vectors, $e_i$ (so each $V_{a_i}$ is a copy of $\mathbb{R}$)
-%				\item $a(x,y) = y^T Ax$, $F(x) = b^T x$, and $a_i(x_i, y_i) = x_i y_i$
-%				\item The operators $R_i$ go from $V_{a_i}$ to $V_a$ and can be defined by $R_i(x_i) = x_i e_i$
-%				\item The bounds $\gamma_i$ are just there to ensure the iterate mapping is ``contractive''; setting them to the diagonal elements $a_{ii}$ is sufficient
-%				\item The operators $T_i$ are defined by the variational problem (which is controlled by $a_i(\cdot,\cdot)$ and $a(\cdot,\cdot)$); here $T_i v = (Av)_i$
-%			\end{itemize}
-%	\end{itemize}
-%\end{frame}
-%
-%\begin{frame}
-%	\frametitle{General algorithm}
-%	\begin{algorithm}[H]
-%		\DontPrintSemicolon
-%		\KwIn{Space splitting-$V_a$, operators $R_i, T_i$, initial guess $u^{(0)} \in V_a$, relaxation parameter $\beta$, bounds $\gamma_i$}
-%		\For {$k = 1, 2, \ldots$ until convergence} {
-%			Compute the residuals, $r_i^{(k)} = T_i e^{(k)}$ \;
-%			Choose an index, $i^*$, associated with a desired subspace \;
-%			Set $u^{(k)} = u^{(k-1)} + \frac{\beta}{\gamma_i} R_{i^*} r_{i^*}^{(k-1)}$ \;
-%		}
-%	\end{algorithm}
-%\end{frame}
 
 \section{Summary \& Path Forward}
 
 \begin{frame}
-	\frametitle{Summary \& Path Forward}
+	\frametitle{Summary}
 	\begin{itemize}
-		\item While linear solvers are prevalent throughout science and engineering, the idea of using weighted randomization could find uses in other key areas
-		\item Example: convex optimization 
-			\begin{itemize}
-				\item stochastic gradient descent, and variants thereof
-				\item current research mainly focuses on uniformly selecting components, but some studies have examined using a Southwell-like approach with some success
-					\begin{itemize}
-						\item using weighted randomization may allow a blend between the two approaches
-					\end{itemize}
-			\end{itemize}
+		\item Dynamic non-uniform randomization provides a potential way to improve the performance of asynchronous linear solvers
+		\item Moving forward, many questions need to be answered to establish that it's an area worth pursuing
+		\item Initial results do suggest that there is potential for the method to provide a modest improvement over existing techniques in certain circumstances
 	\end{itemize}
 \end{frame}
 
-
-
-
-
+\begin{frame}
+	\frametitle{Moving forward}
+	\begin{itemize}
+		\item Work on proving convergence as a per iteration reduction in the expected error
+		\item Look into dealing with the distributed memory environment
+		\item Try incorporating new solvers into more complex existing routines
+		\item Keep experimenting with different distributions (still chosen beforehand) and ranking methods and periodicities
+		\item Try using an evolving probability distribution where the parameters of distribution shift over time
+		\item Investigating the impact that different problems have
+		\item Look into possible transfer of ideas to problems in convex optimization
+	\end{itemize}
+\end{frame}
+ 
+\begin{frame}
+	\frametitle{}
+	\begin{center}
+	    Questions? 
+	\end{center}
+    
+\end{frame}
 
 
 

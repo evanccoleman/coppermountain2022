@@ -67,6 +67,18 @@
 \end{frame}
 
 \begin{frame}
+	\frametitle{Introduction}
+	\begin{itemize}
+		\item Some applications have 
+		\item Some systems don't need to be solved exactly
+		    \begin{itemize}
+		        \item e.g., there may be applications where quickly arriving at a sufficiently good answer is preferable to getting an exact answer in a longer period of time
+		    \end{itemize}
+	    \item There are a number of papers that explore the feasibility of using randomized linear solvers to achieve this goal:
+	\end{itemize}	
+\end{frame}
+
+\begin{frame}
 	\frametitle{Motivation}
 	\begin{itemize}
 		\item \textcite{wolfson2017distributed} investigated using a Southwell-like approach towards solving linear systems
@@ -77,7 +89,7 @@
 \end{frame}
 
 
-\section{Ideas for Improvement}
+\section{Ideas Under Consideration}
 
 \begin{frame}
 	\frametitle{Setting the stage}
@@ -87,8 +99,10 @@
 	\end{itemize}
 \end{frame}
 
+% TODO: Try to clarify/summarize our prior contribution
+% TODO: e.g., how does our approach differ from the existing work (Avron & Chow)
 \begin{frame}
-	\frametitle{``New'' approach}
+	\frametitle{Our approach}
 	\begin{itemize}
 		\item Make the random selection change dynamically 
 		\item Goal is to gain some benefit of selecting the ``right'' blocks (similar to classical Southwell) without adding so much computational overhead that the total execution time is slower
@@ -101,6 +115,7 @@
 	\end{itemize}
 \end{frame}
 
+% Add Edmond's as another bullet (with caveat?)
 \begin{frame}
 	\frametitle{Approaches towards making the component selection}
 	\begin{itemize}
@@ -127,10 +142,15 @@
 		                \mathbb{P}(i=k) = \frac{r_{k}}{\sum_j r_j}
 		            \end{equation}
 		        \item Periodically fitting a continuous distribution to the (sorted) local residuals and drawing random numbers from this distribution
+		            \begin{itemize}
+		                \item Previous: exponential, and normal
+		                \item New: triangular
+		            \end{itemize}
 		    \end{itemize}
 	\end{itemize}
 \end{frame}
 
+% TODO: Move up sorted residual images?
 
 \begin{frame}
 	\frametitle{Questions to investigate}

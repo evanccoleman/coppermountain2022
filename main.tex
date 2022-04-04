@@ -17,6 +17,7 @@
 \DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
 
 \usepackage[linesnumbered,lined,noline,ruled,noend]{algorithm2e}
+%\usepackage{algorithm,algorithmic}
 \usepackage{subfig}
 \usepackage{pgfplots}
 
@@ -69,7 +70,7 @@ Iterative Methods\\ April 4--8, 2022}
 		    \begin{itemize}
 		        \item e.g., in AI applications arriving quickly at a sufficiently good answer is preferable to waiting longer for a highly accurate answer
 		    \end{itemize}
-		\item Asynchronous solvers gain prominence at the exascale and heterogeneous systems.
+		\item Asynchronous solvers gain prominence at the exascale and heterogeneous systems
 	    \item There are a number of papers that explore the feasibility of using randomized linear solvers to achieve this goal:
 	        \begin{itemize}
 	            \item \textcite{leventhal2010randomized}; 
@@ -94,7 +95,7 @@ Iterative Methods\\ April 4--8, 2022}
 \begin{frame}
 	\frametitle{Motivation}
 	\begin{itemize}
-		\item \textcite{wolfson2017distributed} investigated  a Southwell-like approach for solving linear systems to improve on Gauss-Scieldel iteration
+		\item \textcite{wolfson2017distributed} investigated  a Southwell-like approach for solving linear systems
 	\end{itemize}	
 	\begin{block}{Question:}
 	    Is there a way to combine the natural greediness of the Southwell algorithm with the randomized asynchronous nature of the solvers as proposed in [1--3]?
@@ -107,11 +108,48 @@ Iterative Methods\\ April 4--8, 2022}
 \begin{frame}
 	\frametitle{Setting the stage}
 	\begin{itemize}
+	    \item Everything considered here is some variant of (block) asynchronous Jacobi
 		\item Although these solvers have applications inside other solvers, we focus on their ability to solve systems directly
-        \item First we will describe our approach and motivation
-        \item Then we will go over some results and discuss paths forward
+        \item First we will describe our approach and motivation then we will go over some results and discuss paths forward
 	\end{itemize}
 \end{frame}
+
+\begin{frame}
+	\frametitle{Randomized Gauss Seidel (from Avron et al)}
+    Let $A \in \mathcal{R}^{n\times n}$ be SPD, $b, x_0 \in \mathcal{R}^n$, then perform iterative updates based on:
+        \begin{itemize}
+            \item $r_0 = b - Ax_j$
+            \item $\gamma_j = d^T_jr_j / d_j^TAd_j$
+            \item $x_{j+1} = x_j + \gamma_j d_j$
+        \end{itemize}
+    for some direction vectors $d_0, d_1, \ldots, d_n$. If the $d_j$ are selected using the distribution,
+        \begin{equation}
+            Pr(d_j = e_i) = a_{ii} / Tr(A)
+        \end{equation}
+    then,
+        \begin{equation}
+            \mathbb{E}[\norm{x_j - x }_A^2] \leq \left( 1 - \frac{\lambda_{min}}{Tr(A)}\right)^m \norm{x_0 - x^*}_A^2
+        \end{equation}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Generic algorithm}
+	\begin{algorithm}[H]
+		\DontPrintSemicolon
+		\For {each processing element $P_{l}$} {
+			\For {$i = 1, 2, \ldots$ until convergence} {
+				Pick a component $j \in \{1, 2, \ldots, m\}$ {\em{\underline{somehow}}} \; 
+				Read the corresponding entries of $A, x, b$ \;
+				Perform the relaxation for equation $x_j$ \;
+				Update the data for $x_j$ \;
+			}
+		}
+	\end{algorithm}
+	\begin{itemize}
+	    \item We want to make the component selection random and dynamic
+	\end{itemize}
+\end{frame}
+
 
 \begin{frame}
 	\frametitle{Residual data for finite-difference of 2D Laplacian}
@@ -146,7 +184,7 @@ Iterative Methods\\ April 4--8, 2022}
 		\item Relies on monitoring which (blocks of) residuals contribute most to the residual: $r = b - Ax$
 		\item Finds and ranks periodically the local/component residuals (for the contribution of block $i$): $r_i = b_i - Ax_i $
 			\begin{itemize}
-	            \item Selects component using a {\it non-uniform} distribution that favors components with higher local residual
+	            \item Can select a component using a {\it non-uniform} distribution that favors components with higher local residual
 	        \end{itemize}
 	\end{itemize}
 \end{frame}
@@ -183,8 +221,13 @@ Iterative Methods\\ April 4--8, 2022}
 \begin{frame}
 	\frametitle{More motivation}
 	\begin{itemize}
-		\item One of the first questions should be: how different are the local contributions to the residual?
-		\item For matrices where the local residuals, $r_i$, are similar, any Southwell-like weighting will not show much improvement over a uniform random distribution
+		\item The real question is: how much can this type of component selection improve performance?
+		\item With important subquestion: how much overhead do you introduce to make ``better'' selections?
+		\item Notes about results:
+		    \begin{itemize}
+		        \item ``Uniform'' here refers to a true uniform distribution
+		        \item Only a few results are shown in an attempt to just give the flavor of results
+		    \end{itemize}
 	\end{itemize}
 \end{frame}
 
@@ -219,6 +262,7 @@ Iterative Methods\\ April 4--8, 2022}
                   \item Shared memory experiments on a node at Old Dominion University
                   \item 64 core Intel Xeon Phi
                   \item 2D discretization of the Laplacian over an $800 \times 800$ grid
+                  \item The distribution was updated every 5 iterations
                   \item Dashed red line represents the performance of uniform selection
               \end{itemize}
          \end{columns}
@@ -375,72 +419,72 @@ Iterative Methods\\ April 4--8, 2022}
 	\end{center}
 \end{frame}
 
-\begin{frame}
-	\frametitle{}
-	\begin{center}
-	    Back-up
-	\end{center}
-\end{frame}
+% \begin{frame}
+% 	\frametitle{}
+% 	\begin{center}
+% 	    Back-up
+% 	\end{center}
+% \end{frame}
 
-\begin{frame}
-	\frametitle{Randomized Gauss Seidel (from Avron et al)}
-    Let $A \in \mathcal{R}^{n\times n}$ be SPD, $b, x_0 \in \mathcal{R}^n$, then perform iterative updates based on:
-        \begin{itemize}
-            \item $r_0 = b - Ax_j$
-            \item $\gamma_j = d^T_jr_j / d_j^TAd_j$
-            \item $x_{j+1} = x_j + \gamma_j d_j$
-        \end{itemize}
-    for some direction vectors $d_0, d_1, \ldots, d_n$. If the $d_j$ are selected using the distribution,
-        \begin{equation}
-            Pr(d_j = e_i) = a_{ii} / Tr(A)
-        \end{equation}
-    then,
-        \begin{equation}
-            \mathbb{E}[\norm{x_j - x }_A^2] \leq \left( 1 - \frac{\lambda_{min}}{Tr(A)}\right)^m \norm{x_0 - x^*}_A^2
-        \end{equation}
-\end{frame}
+% \begin{frame}
+% 	\frametitle{Randomized Gauss Seidel (from Avron et al)}
+%     Let $A \in \mathcal{R}^{n\times n}$ be SPD, $b, x_0 \in \mathcal{R}^n$, then perform iterative updates based on:
+%         \begin{itemize}
+%             \item $r_0 = b - Ax_j$
+%             \item $\gamma_j = d^T_jr_j / d_j^TAd_j$
+%             \item $x_{j+1} = x_j + \gamma_j d_j$
+%         \end{itemize}
+%     for some direction vectors $d_0, d_1, \ldots, d_n$. If the $d_j$ are selected using the distribution,
+%         \begin{equation}
+%             Pr(d_j = e_i) = a_{ii} / Tr(A)
+%         \end{equation}
+%     then,
+%         \begin{equation}
+%             \mathbb{E}[\norm{x_j - x }_A^2] \leq \left( 1 - \frac{\lambda_{min}}{Tr(A)}\right)^m \norm{x_0 - x^*}_A^2
+%         \end{equation}
+% \end{frame}
 
-\begin{frame}
-	\frametitle{Proof (from Avron's talk in 2013)}
-    For simplicity: assume $A$ has unit diagonal via rescaling.
-    \begin{enumerate}
-        \item $\gamma_j = d_j^Tr_j$
-        \item $\norm{x_{j+1} - x}_A^2 = \norm{x_j - x}_A^2 - (d_j^Tr_j)^2$
-        \item $\mathbb{E}[(d_j^Tr_j)^2 | r_j] = \frac{1}{n} \norm{r_j}_2^2$
-        \item $\lambda_{min} \norm{x_j - x}_A^2 \leq \norm{r_j}_2^2 \leq \lambda_{max} \norm{x_j - x}_A^2$
-        \item $\frac{\lambda_{min}}{n}\mathbb{E}[\norm{x_j - x}_A^2] \leq \mathbb{E}[(d_j^Tr_j)^2] \leq \frac{\lambda_{max}}{n}\mathbb{E}[\norm{x_j - x}_A^2]$
-    \end{enumerate}
-\end{frame}
+% \begin{frame}
+% 	\frametitle{Proof (from Avron's talk in 2013)}
+%     For simplicity: assume $A$ has unit diagonal via rescaling.
+%     \begin{enumerate}
+%         \item $\gamma_j = d_j^Tr_j$
+%         \item $\norm{x_{j+1} - x}_A^2 = \norm{x_j - x}_A^2 - (d_j^Tr_j)^2$
+%         \item $\mathbb{E}[(d_j^Tr_j)^2 | r_j] = \frac{1}{n} \norm{r_j}_2^2$
+%         \item $\lambda_{min} \norm{x_j - x}_A^2 \leq \norm{r_j}_2^2 \leq \lambda_{max} \norm{x_j - x}_A^2$
+%         \item $\frac{\lambda_{min}}{n}\mathbb{E}[\norm{x_j - x}_A^2] \leq \mathbb{E}[(d_j^Tr_j)^2] \leq \frac{\lambda_{max}}{n}\mathbb{E}[\norm{x_j - x}_A^2]$
+%     \end{enumerate}
+% \end{frame}
 
-\begin{frame}
-	\frametitle{Randomized Gauss Seidel (new distribution)}
-    Let $A \in \mathcal{R}^{n\times n}$ be SPD, $b, x_0 \in \mathcal{R}^n$, then perform iterative updates based on:
-        \begin{itemize}
-            \item $r_0 = b - Ax_j$
-            \item $\gamma_j = d^T_jr_j / d_j^TAd_j$
-            \item $x_{j+1} = x_j + \gamma_j d_j$
-        \end{itemize}
-    for some direction vectors $d_0, d_1, \ldots, d_n$. If the $d_j$ are selected using the distribution,
-        \begin{equation}
-            Pr(d_j = e_i) = r_{i} / \sum_k r_k
-        \end{equation}
-    then,
-        \begin{equation}
-            \mathbb{E}[\norm{x_j - x }_A^2] \leq \left( 1 - \frac{\lambda_{min}}{Tr(A)}\right)^m \norm{x_0 - x^*}_A^2
-        \end{equation}
-\end{frame}
+% \begin{frame}
+% 	\frametitle{Randomized Gauss Seidel (new distribution)}
+%     Let $A \in \mathcal{R}^{n\times n}$ be SPD, $b, x_0 \in \mathcal{R}^n$, then perform iterative updates based on:
+%         \begin{itemize}
+%             \item $r_0 = b - Ax_j$
+%             \item $\gamma_j = d^T_jr_j / d_j^TAd_j$
+%             \item $x_{j+1} = x_j + \gamma_j d_j$
+%         \end{itemize}
+%     for some direction vectors $d_0, d_1, \ldots, d_n$. If the $d_j$ are selected using the distribution,
+%         \begin{equation}
+%             Pr(d_j = e_i) = r_{i} / \sum_k r_k
+%         \end{equation}
+%     then,
+%         \begin{equation}
+%             \mathbb{E}[\norm{x_j - x }_A^2] \leq \left( 1 - \frac{\lambda_{min}}{Tr(A)}\right)^m \norm{x_0 - x^*}_A^2
+%         \end{equation}
+% \end{frame}
 
-\begin{frame}
-	\frametitle{Proof (adapted)}
-    For simplicity: assume $A$ has unit diagonal via rescaling.
-    \begin{enumerate}
-        \item $\gamma_j = d_j^Tr_j$
-        \item $\norm{x_{j+1} - x}_A^2 = \norm{x_j - x}_A^2 - (d_j^Tr_j)^2$
-        \item $\mathbb{E}[(d_j^Tr_j)^2 | r_j] \color{red}{\geq}  \color{black} \frac{1}{n} \norm{r_j}_2^2$
-        \item $\lambda_{min} \norm{x_j - x}_A^2 \leq \norm{r_j}_2^2 \leq \lambda_{max} \norm{x_j - x}_A^2$
-        \item $\frac{\lambda_{min}}{n}\mathbb{E}[\norm{x_j - x}_A^2] \leq \mathbb{E}[(d_j^Tr_j)^2] \leq \frac{\lambda_{max}}{n}\mathbb{E}[\norm{x_j - x}_A^2]$
-    \end{enumerate}
-\end{frame}
+% \begin{frame}
+% 	\frametitle{Proof (adapted)}
+%     For simplicity: assume $A$ has unit diagonal via rescaling.
+%     \begin{enumerate}
+%         \item $\gamma_j = d_j^Tr_j$
+%         \item $\norm{x_{j+1} - x}_A^2 = \norm{x_j - x}_A^2 - (d_j^Tr_j)^2$
+%         \item $\mathbb{E}[(d_j^Tr_j)^2 | r_j] \color{red}{\geq}  \color{black} \frac{1}{n} \norm{r_j}_2^2$
+%         \item $\lambda_{min} \norm{x_j - x}_A^2 \leq \norm{r_j}_2^2 \leq \lambda_{max} \norm{x_j - x}_A^2$
+%         \item $\frac{\lambda_{min}}{n}\mathbb{E}[\norm{x_j - x}_A^2] \leq \mathbb{E}[(d_j^Tr_j)^2] \leq \frac{\lambda_{max}}{n}\mathbb{E}[\norm{x_j - x}_A^2]$
+%     \end{enumerate}
+% \end{frame}
 
 
 

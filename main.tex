@@ -36,7 +36,7 @@
 \institute % (optional)
 {
   \inst{1}%
-  United State Department of Defense
+  United States Department of Defense
    \and
   \inst{2}%
   Old Dominion University\\
@@ -109,7 +109,7 @@ Iterative Methods\\ April 4--8, 2022}
 	\begin{itemize}
 		\item Although these solvers have applications inside other solvers, we focus on their ability to solve systems directly
         \item First we will describe our approach and motivation
-        \item Then we'll go over some results and discuss paths forward
+        \item Then we will go over some results and discuss paths forward
 	\end{itemize}
 \end{frame}
 
@@ -141,14 +141,13 @@ Iterative Methods\\ April 4--8, 2022}
 \begin{frame}
 	\frametitle{Our approach}
 	\begin{itemize}
-		\item Make the random selection change dynamically 
-		\item Goal is to  select the ``right'' residual components (similar to classical Southwell) without the large computational overhead, incurred in the Southwell  by sorting and ranking after each update.
-		\item Based around monitoring which (blocks of) residuals contribute most to the residual $r = b - Ax$
-		\item Only periodically find and rank the local/component residuals (for the contribution of block $i$):
-			\begin{equation}
-				r_i = b_i - Ax_i
-			\end{equation}
-			and make the selection using a {\it non-uniform} distribution that favors selection of components with higher local residual
+		\item Idea: Make the random selection change dynamically 
+		\item Goal: Select the ``right'' residual components (similar to classical Southwell) without the large computational overhead, incurred in the Southwell  by sorting and ranking after each update
+		\item Relies on monitoring which (blocks of) residuals contribute most to the residual: $r = b - Ax$
+		\item Finds and ranks periodically the local/component residuals (for the contribution of block $i$): $r_i = b_i - Ax_i $
+			\begin{itemize}
+	            \item Selects component using a {\it non-uniform} distribution that favors components with higher local residual
+	        \end{itemize}
 	\end{itemize}
 \end{frame}
 
@@ -164,9 +163,8 @@ Iterative Methods\\ April 4--8, 2022}
 	    \end{itemize}
 \end{frame}
 
-
 \begin{frame}
-	\frametitle{Approaches towards making the component selection}
+	\frametitle{Approaches towards making the component selection (cont'd)}
 	    \begin{itemize}
 	        \item Discrete distribution defined by the ratio of the local residual to the sum of all residuals
 	            \begin{equation}
@@ -174,7 +172,8 @@ Iterative Methods\\ April 4--8, 2022}
 	            \end{equation}
 	        \item Periodically fitting a continuous distribution to the (sorted) local residuals and drawing random numbers from this distribution
 	            \begin{itemize}
-	                \item Exponential, triangular
+	                \item Exponential
+	                \item Triangular
 	            \end{itemize}
 	    \end{itemize}
 \end{frame}
@@ -210,14 +209,14 @@ Iterative Methods\\ April 4--8, 2022}
 % \end{frame}
 
 \begin{frame}
-	\frametitle{Solver data}
+	\frametitle{Solver data (cont'd)}
        \begin{columns}
-          \column{0.5\linewidth}
+          \column{0.4\linewidth}
              \centering
              \includegraphics[width=\linewidth]{images/expoDist_calcTimes_all_1tbr.pdf}
-           \column{0.5\linewidth}
+           \column{0.6\linewidth}
               \begin{itemize}
-                  \item Shared memory experiments on the Rulfo system at Old Dominion University
+                  \item Shared memory experiments on a node at Old Dominion University
                   \item 64 core Intel Xeon Phi
                   \item 2D discretization of the Laplacian over an $800 \times 800$ grid
                   \item Dashed red line represents the performance of uniform selection
@@ -310,7 +309,7 @@ Iterative Methods\\ April 4--8, 2022}
 		}
 	\end{algorithm}
 	\begin{itemize}
-	    \item Key: we're performing the dynamic selection on the blocks themselves, and performing traditional iteration inside of the blocks
+	    \item Key: we're performing the dynamic selection on the blocks themselves, and performing traditional iteration inside the blocks
 	\end{itemize}
 \end{frame}
 
@@ -319,11 +318,11 @@ Iterative Methods\\ April 4--8, 2022}
 	\begin{itemize}
 	    \item Instead of dividing the domain into blocks as in the previous image, we create blocks dynamically:
 	        \begin{itemize}
-	            \item Each thread selects a single row using our selection methodology from before to initialize
+	            \item Each thread selects a single row using our proposed selection methodology to initialize
 	            \item Each update causes each thread to select a new single row using the same methodology
-	            \item These two rows create a block where the thread goes throw and performs traditional updates (e.g., Jacobi or Gauss-Seidel) on all components between the two
+	            \item These two rows create a block inside which traditional updates (e.g., Jacobi or Gauss-Seidel) are performed on all the components of the two rows
 	        \end{itemize}
-        \item Need to add logic to avoid multiple threads trying to write to the same component
+        \item Need to add locks to avoid multiple threads trying to write to the same component
 	\end{itemize}
 \end{frame}
 
@@ -336,7 +335,7 @@ Iterative Methods\\ April 4--8, 2022}
 	    \subfloat[Dynamic block implementation]{\includegraphics[width=0.5\textwidth]{images/row_time.pdf}}
 	\end{figure}
 	\begin{itemize}
-	    \item Still single node, shared memory experiments (different architecture)
+	    \item Still single node, shared memory experiments (different architecture: two Intel Xeon  E5-2695 v3 14 core Haswell-EP processors with  32 GB of DRAM)
 	\end{itemize}
 \end{frame}
 
